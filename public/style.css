@@ -1,0 +1,7 @@
+body {
+  background-color: #d9e4ed;
+  background-image: url("assets/snowstorm.png");
+  background-size: cover;
+  background-repeat: no-repeat;
+  height: 100vh;
+}

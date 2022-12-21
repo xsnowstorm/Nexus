@@ -1,15 +1,17 @@
 from src.nexus import Nexus
 
 app = Nexus(
-  path = "pages"
+  path = "pages",
+  static = "public"
 )
 
 def require_login(req):
-  return True
+    print(req.method + req.path)
+    return True
 
 @app.route("/")
 def index(req):
-    return app.renderFile("index.html", {"title": "Main"})
+    return app.sendRes(app.renderFile("index.html", {"title": "Main"}))
 
 @app.route("/profile", [require_login])
 def profile(req):

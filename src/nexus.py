@@ -1,27 +1,33 @@
+import os
 import json
 import requests
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 class Nexus:
-    def __init__(self, path=""):
+    def __init__(self, path="", static=False):
         self.routes = {}
         if not path.endswith("/") and not path == "":
             path = path + "/"
+        if not static.endswith("/") and not static == "":
+            static = static + "/"
         self.path = path
+        self.static = static
 
     class RequestHandler(BaseHTTPRequestHandler):
         def do_GET(self):
-            response = self.server.framework.serve(self)
-            type = self.server.framework.get_type(self.path)
-            self.send_response(200)
-            self.send_header('Content-type', type)
+            res = self.server.framework.serve(self)
+            body = res["body"]
+            self.send_response(res["code"])
+            self.send_header("Content-type", body["type"])
             self.end_headers()
-            self.wfile.write(str(response).encode('utf-8'))
+            self.wfile.write(body["content"])
 
-    def get_type(self, path):
-        type = "text/html"
+    def getType(self, path):
+        type = "text/plain"
         if path.endswith(".html"):
             type = "text/html"
+        elif path.endswith(".css"):
+            type = "text/css"
         elif path.endswith(".js") or path.endswith(".mjs"):
             type = "text/javascript"
         elif path.endswith(".ico"):
@@ -35,6 +41,11 @@ class Nexus:
             self.routes[path] = {"view": f, "middleware": middleware}
         return decorator
 
+    def sendRes(self, body="", code=200):
+      if not type(body) is dict:
+          body = {"content": str(body).encode("utf-8"), "type": "text/plain"}
+      return {"body": body, "code": code}
+
     def serve(self, req):
       path = req.path
       method = req.command
@@ -46,20 +57,22 @@ class Nexus:
         if method == "GET":
             for middleware_function in middleware:
                 if not middleware_function(req):
-                    return "501: Unauthorized"
+                    return self.sendRes("401: Unauthorized", 401)
             return view(req)
-        elif method == "POST":
-            pass
-        elif method == "PUT":
-            pass
-        elif method == "DELETE":
-            pass
         else:
-            return "405: Method Not Allowed"
+            return self.sendRes("405: Method Not Allowed", 405)
       else:
-        return "404: Not Found"
+        if method == "GET" and self.static:
+            if path == "/":
+                static = self.static + "index.html"
+            else:
+                static = self.static + path[1:]
+            if os.path.isfile(static):
+                return self.sendRes(self.readFile(static))
+            else:
+                return self.sendRes("404: Not Found", 404)
       
-    def listen(self, host, port):
+    def listen(self, host="localhost", port=8080):
         server = HTTPServer((host, port), self.RequestHandler)
         server.framework = self
         server.serve_forever()
@@ -78,13 +91,19 @@ class Nexus:
         if response.status_code == 200:
             result = response.json()
         else:
-            result = "EJS rendering returned status: " + str(response.status_code)
-        return result
+            result = "EJS rendering returned status: " + response.status_code
+        return str(result).encode("utf-8")
 
-    def readFile(self, path):
-        with open(self.path + path, "r") as file:
+    def readFile(self, path, mode="rb",  render=False, data={}):
+        with open(path, mode) as file:
             content = file.read()
-            return content
+            if render:
+                content = self.render(content, data)
+            contentType = self.getType(path)
+            return {
+              "content": content,
+              "type": contentType
+            }
 
-    def renderFile(self, path, data):
-        return self.render(self.readFile(path), data)
+    def renderFile(self, path, data={}):
+        return self.readFile(self.path + path, "r", True, data)
