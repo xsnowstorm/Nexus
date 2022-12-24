@@ -1,7 +1,6 @@
 import os
-import json
-import requests
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from src.template import render as template
 
 class Nexus:
     def __init__(self, path="", static=False):
@@ -76,29 +75,12 @@ class Nexus:
         server = HTTPServer((host, port), self.RequestHandler)
         server.framework = self
         server.serve_forever()
-  
-    def render(self, template, data={}):
-        renderer = "https://ejs-renderer.xsnowstorm.repl.co/"
-        template = json.dumps(template)
-        data = json.dumps(data)
-        body = {
-          "code": template,
-          "data": data
-        }
-    
-        requests.get(renderer)
-        response = requests.post(renderer, json=body);
-        if response.status_code == 200:
-            result = response.json()
-        else:
-            result = "EJS rendering returned status: " + response.status_code
-        return str(result).encode("utf-8")
 
     def readFile(self, path, mode="rb",  render=False, data={}):
         with open(path, mode) as file:
             content = file.read()
             if render:
-                content = self.render(content, data)
+                content = str(template(content, data)).encode("utf-8")
             contentType = self.getType(path)
             return {
               "content": content,
