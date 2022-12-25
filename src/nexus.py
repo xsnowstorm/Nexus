@@ -3,7 +3,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from src.template import render as template
 
 class Nexus:
-    def __init__(self, path="", static=False):
+    def __init__(self, path="", static=""):
         self.routes = {}
         if not path.endswith("/") and not path == "":
             path = path + "/"
@@ -61,7 +61,7 @@ class Nexus:
         else:
             return self.sendRes("405: Method Not Allowed", 405)
       else:
-        if method == "GET" and self.static:
+        if method == "GET" and not self.static == "":
             if path == "/":
                 static = self.static + "index.html"
             else:
@@ -70,6 +70,8 @@ class Nexus:
                 return self.sendRes(self.readFile(static))
             else:
                 return self.sendRes("404: Not Found", 404)
+        else:
+            return self.sendRes("404: Not Found", 404)
       
     def listen(self, host="localhost", port=8080, onStart=None, onStop=None):
         server = HTTPServer((host, port), self.RequestHandler)
