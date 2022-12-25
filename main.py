@@ -12,4 +12,10 @@ def index(req):
       "content": "pages/index.html"
     }))
 
-app.listen("0.0.0.0", 3000)
+def online():
+  print("server running!")
+
+def offline():
+  print("server stopped!")
+  
+app.listen("0.0.0.0", 3000, online, offline)

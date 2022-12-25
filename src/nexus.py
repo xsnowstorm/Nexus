@@ -71,10 +71,17 @@ class Nexus:
             else:
                 return self.sendRes("404: Not Found", 404)
       
-    def listen(self, host="localhost", port=8080):
+    def listen(self, host="localhost", port=8080, onStart=None, onStop=None):
         server = HTTPServer((host, port), self.RequestHandler)
         server.framework = self
-        server.serve_forever()
+        if onStart:
+            onStart()
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            server.shutdown()
+            if onStop:
+                onStop()
 
     def readFile(self, path, mode="rb",  render=False, data={}):
         with open(path, mode) as file:
