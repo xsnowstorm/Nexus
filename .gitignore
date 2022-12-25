@@ -1,3 +1,10 @@
 venv
 
 __pycache__
+.config
+poetry.lock
+pyproject.toml
+
+.replit
+replit.nix
+.upm
