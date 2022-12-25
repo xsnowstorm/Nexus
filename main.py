@@ -12,6 +12,10 @@ def index(req):
       "content": "pages/index.html"
     }))
 
+@app.post("/")
+def index(req):
+    return app.sendRes("200: OK")
+
 def online():
   print("server running!")
 
