@@ -1,6 +1,6 @@
 def render(template, data={}):
-  prefix = "<%"
-  suffix = "%>"
+  prefix = "{%"
+  suffix = "%}"
 
   embeds = []
   start = template.find(prefix)
