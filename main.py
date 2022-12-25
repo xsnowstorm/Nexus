@@ -5,16 +5,11 @@ app = Nexus(
   static = "public"
 )
 
-def require_login(req):
-    print(req.method + req.path)
-    return True
-
 @app.route("/")
 def index(req):
-    return app.sendRes(app.renderFile("index.html", {"title": "Main"}))
-
-@app.route("/profile", [require_login])
-def profile(req):
-    return "Profile"
+    return app.sendRes(app.renderFile("template.html", {
+      "title": "Main",
+      "content": "pages/index.html"
+    }))
 
 app.listen("0.0.0.0", 3000)
