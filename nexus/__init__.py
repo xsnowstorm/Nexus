@@ -1,8 +1,10 @@
+__all__ = ["Nexus"]
+
 import os
 import ast
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from src.template import render as template
-from src.mimeTypes import getMime
+from mimetypes import guess_type
+from .template import render as template
 
 class Nexus:
   def __init__(self, path="", static=""):
@@ -16,9 +18,6 @@ class Nexus:
   
   class RequestHandler(BaseHTTPRequestHandler):
     routes = {}
-    postRoutes = {}
-    putRoutes = {}
-    deleteRoutes = {}
     
     def do_GET(self):
       self.respond()
@@ -39,9 +38,7 @@ class Nexus:
       path = req.path
       method = req.method
 
-      if method == "GET":
-        functions = self.routes.get(path)
-        if not functions and not self.static == "":
+      if method == "GET" and not self.static == "":
           if path == "/":
             static = self.static + "index.html"
           else:
@@ -51,16 +48,14 @@ class Nexus:
             res.readFile(static)
             return res
           
-      elif method == "POST":
-        functions = self.postRoutes.get(path)
-      elif method == "PUT":
-        functions = self.putRoutes.get(path)
-      elif method == "DELETE":
-        functions = self.deleteRoutes.get(path)
-        
-      if functions:
-        view = functions.get("view")
-        middlewares = functions["middleware"]
+      routes = self.routes.get(method)
+      if not routes:
+        return Response("501: Not Implemented", 501)
+      route = routes.get(path)
+
+      if route:
+        view = route.get("view")
+        middlewares = route.get("middleware")
         for middleware in middlewares:
           if not middleware(req):
             return Response("401: Unauthorized", 401)
@@ -85,8 +80,12 @@ class Nexus:
       self.method = handler.command
       self.headers = handler.headers
       if not self.method == "GET":
-        length = int(self.headers.get("Content-length"))
-        self.body = ast.literal_eval(handler.rfile.read(length).decode())
+        lengthHeader = self.headers.get("Content-length")
+        length = int(lengthHeader) if lengthHeader else 0
+        bodyStr = handler.rfile.read(length).decode()
+        try:
+          self.body = ast.literal_eval(bodyStr) if bodyStr else {}
+        except
         
   class Response:
     def __init__(self, body="", code=200, headers={"Content-type": "text/plain"}):
@@ -97,7 +96,7 @@ class Nexus:
     def readFile(self, path, mode="rb",  render=False, data={}):
       with open(path, mode) as file:
         content = file.read()
-        contentType = getMime(path)
+        contentType = guess_type(path)
         if render:
           content = str(template(content, data)).encode("utf-8")
         self.body = content
@@ -106,24 +105,12 @@ class Nexus:
     def render(self, path, data={}):
       self.readFile(self.path + path, "r", True, data)
   
-  def route(self, path, middleware=[]):
+  def route(self, path, method="GET", middleware=[]):
     def decorator(f):
-      self.RequestHandler.routes[path] = {"view": f, "middleware": middleware}
-    return decorator
-
-  def post(self, path, middleware=[]):
-    def decorator(f):
-      self.RequestHandler.postRoutes[path] = {"view": f, "middleware": middleware}
-    return decorator
-
-  def put(self, path, middleware=[]):
-    def decorator(f):
-      self.RequestHandler.putRoutes[path] = {"view": f, "middleware": middleware}
-    return decorator
-
-  def delete(self, path, middleware=[]):
-    def decorator(f):
-      self.RequestHandler.deleteRoutes[path] = {"view": f, "middleware": middleware}
+      routes = self.RequestHandler.routes.get(method)
+      if not routes:
+        self.RequestHandler.routes[method] = {}
+      self.RequestHandler.routes[method][path] = {"view": f, "middleware": middleware}
     return decorator
       
   def listen(self, host="localhost", port=8080, onStart=None, onStop=None):

@@ -1,3 +1,5 @@
+__all__ = ["render"]
+
 def render(template, data={}):
   prefix = "{%"
   suffix = "%}"
